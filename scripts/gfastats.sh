@@ -1,9 +1,9 @@
 #!/bin/bash --login
 #---------------
-#gfastats.sh : converts gfa to fasta format, and calculates assembly summary statistics
+# gfastats.sh: converts GFA to FASTA and calculates assembly summary statistics
+# Processes all *ctg.gfa files in the working directory
 #---------------
-#Requested resources:
-#SBATCH --account=pawsey0812
+#SBATCH --account=pawsey0964
 #SBATCH --job-name=gfastats
 #SBATCH --partition=work
 #SBATCH --ntasks=1
@@ -16,32 +16,43 @@
 #SBATCH --error=%x-%j.err
 
 
+# ============================================================
+# USER CONFIGURATION - edit these variables before submitting
+# ============================================================
+
+# Estimated genome size in base pairs (use GenomeScope2 estimate)
+GENOME_SIZE=525039910
+
+# gfastats container version
+GFASTATS_SIF=gfastats:1.3.6.sif
+
+# ============================================================
+# END USER CONFIGURATION
+# ============================================================
+
+set -euo pipefail
+
+echo "=== gfastats: genome size ${GENOME_SIZE} bp | $(date) ==="
+
 #---------------
-# Convert gfa to fasta
-
-# Iterate over the files in the directory
-for filename in *ctg.gfa; do
-    if [ -f "$filename" ]; then
-        # Construct the output file path by replacing the extension with ".fasta"
-        output_file="${filename%.*}.fasta"
-        echo "Output file: $output_file"
-        
-        # Execute the gfastats command to convert GFA to FASTA
-        singularity run $SING/gfastats:1.3.6.sif gfastats --discover-paths "$filename" -o fa > "$output_file"
-        echo "Converted $filename to $output_file"
-
-    fi
+# Convert GFA to FASTA
+echo "--- Converting GFA to FASTA ---"
+for gfa in *ctg.gfa; do
+    [[ -f "$gfa" ]] || { echo "No *ctg.gfa files found"; exit 1; }
+    fasta="${gfa%.*}.fasta"
+    echo "  $gfa -> $fasta"
+    singularity run "$SING/${GFASTATS_SIF}" gfastats --discover-paths "$gfa" -o fa > "$fasta"
 done
-
 
 #---------------
 # Calculate summary statistics
-gsize=525039910
-# Iterate over the files in the directory
-for filename in *ctg.gfa; do
-    # Construct the output file path by replacing the extension with ".assembly.summary.txt"
-    output_file="${filename%.*}.assembly.summary.txt"
-
-    # Execute the gfastats command to calculate assembly statistics
-    singularity run $SING/gfastats:1.3.6.sif gfastats "$filename" $gsize --discover-paths --tabular --nstar-report > "$output_file"
+echo "--- Calculating assembly statistics ---"
+for gfa in *ctg.gfa; do
+    [[ -f "$gfa" ]] || continue
+    stats="${gfa%.*}.assembly.summary.txt"
+    echo "  Stats: $stats"
+    singularity run "$SING/${GFASTATS_SIF}" gfastats "$gfa" "${GENOME_SIZE}" \
+        --discover-paths --tabular --nstar-report > "$stats"
 done
+
+echo "=== gfastats complete: $(date) ==="

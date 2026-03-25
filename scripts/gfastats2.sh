@@ -1,9 +1,9 @@
 #!/bin/bash --login
 #---------------
-#gfastats.sh : converts gfa to fasta format, and calculates assembly summary statistics
+# gfastats2.sh: calculates assembly statistics for a single FASTA file
+# Use this after scaffolding (e.g. yahs output) or on any final assembly FASTA
 #---------------
-#Requested resources:
-#SBATCH --account=pawsey0812
+#SBATCH --account=pawsey0964
 #SBATCH --job-name=gfastats
 #SBATCH --partition=work
 #SBATCH --ntasks=1
@@ -16,11 +16,30 @@
 #SBATCH --error=%x-%j.err
 
 
-#---------------
-# Convert gfa to fasta
+# ============================================================
+# USER CONFIGURATION - edit these variables before submitting
+# ============================================================
 
+# Sample name / output prefix
+SAMPLE=OG849
+
+# Input FASTA file
 FA=OG849.yahs_scaffolds_final.fa
-LINEAGE=/scratch/references/busco_db/actinopterygii_odb10
-T=48
 
-singularity run "$SING/gfastats:1.3.10.sif" gfastats -f "$FA" > OG849.yahs.gfastats.txt
+# Output stats file (defaults to <SAMPLE>.gfastats.txt)
+OUT="${SAMPLE}.gfastats.txt"
+
+# gfastats container version
+GFASTATS_SIF=gfastats:1.3.10.sif
+
+# ============================================================
+# END USER CONFIGURATION
+# ============================================================
+
+set -euo pipefail
+
+echo "=== gfastats2: ${FA} -> ${OUT} | $(date) ==="
+
+singularity run "$SING/${GFASTATS_SIF}" gfastats -f "$FA" > "$OUT"
+
+echo "=== gfastats2 complete: $(date) ==="
